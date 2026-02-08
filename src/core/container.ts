@@ -28,6 +28,9 @@ export class Container {
 
   register<T extends Function>(token: T, member: T): void {
     if (this.#registered.has(token)) {
+      if (this.#registered.get(token) === member) {
+        return;
+      }
       throw new Error(`Token ${token.name} is already registered.`);
     }
 
