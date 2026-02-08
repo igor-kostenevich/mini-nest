@@ -57,6 +57,7 @@ export async function runGuards(
     const ctx = new ExpressExecutionContext(controllerClass, handler, req, res);
 
     const can = await Promise.resolve( guardInstance.canActivate(ctx) );
+    if (can === undefined) return false;
     console.log({can, GuardCtor})
     if (!can) return GuardCtor.name;
   }

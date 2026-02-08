@@ -22,6 +22,10 @@ export function Factory(modules: any[]) {
         const meta = get('mini:module', mod);
         if (!meta) continue;
 
+        for (const Provider of meta.providers ?? []) {
+          container.register(Provider, Provider);
+        }
+
         for (const Ctl of meta.controllers ?? []) {
           container.register(Ctl, Ctl)
           const prefix = get('mini:prefix', Ctl) ?? '';
