@@ -3,6 +3,7 @@ import {container} from '../container';
 import {Type} from "../types";
 import {get} from "../utils";
 import {GuardsMiddleware} from "./guards.middleware";
+import {InterceptorsMiddleware} from "./interceptors.middleware";
 import {HandlerMiddleware} from "./handler.middleware";
 import {FiltersMiddleware} from "./filters.middleware";
 import {asyncHandler} from "./async.handler";
@@ -16,6 +17,7 @@ export function Factory(modules: any[]) {
   const globalGuards: Array<Type> = [];
   const globalPipes: Array<Type>  = [];
   const globalFilters: Array<Type>  = [];
+  const globalInterceptors: Array<Type> = [];
 
   const listen = (port: number, callback?: () => void) => {
       for (const mod of modules) {
@@ -41,6 +43,7 @@ export function Factory(modules: any[]) {
             (router as any)[r.method](
               path,
               asyncHandler(GuardsMiddleware(Ctl, handler, globalGuards)),
+              asyncHandler(InterceptorsMiddleware(Ctl, handler, globalInterceptors)),
               asyncHandler(HandlerMiddleware(instance, handler, globalPipes)),
               asyncHandler(FiltersMiddleware(Ctl, handler, globalFilters)),
             );
@@ -68,8 +71,8 @@ export function Factory(modules: any[]) {
     useGlobalFilters: (filters: any[]) => {
       globalFilters.push(...filters);
     },
-    useGlobalInterceptors: (interceptors: any[]) => {
-      throw new Error('Interceptors are not implemented yet');
+    useGlobalInterceptors: (interceptors: Type[]) => {
+      globalInterceptors.push(...interceptors);
     },
   }
 }
