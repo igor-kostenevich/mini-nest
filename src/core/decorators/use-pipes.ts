@@ -8,12 +8,26 @@ export interface PipeTransform<T = any, R = any> {
 
 export const PIPES_METADATA = Symbol('pipes');
 
+/** Метадані pipe на рівні параметра: { [paramIndex]: pipes[] } */
+export const PARAM_PIPES_METADATA = 'mini:param:pipes';
+
 type PipesType = Type<PipeTransform> | InstanceType<Type<PipeTransform>>;
 
 export function UsePipes(
   ...pipes: PipesType[]      // посилання на класи-пайпи
-): ClassDecorator & MethodDecorator {
-  return (target: any, key?: string | symbol) => {
+): ClassDecorator & MethodDecorator & ParameterDecorator {
+  return (target: any, key?: string | symbol, descriptorOrIndex?: number | PropertyDescriptor) => {
+    // Parameter decorator: третій аргумент — number (param index)
+    if (typeof descriptorOrIndex === 'number') {
+      const paramIndex = descriptorOrIndex;
+      const propertyKey = key as string;
+      const existing: Record<number, PipesType[]> =
+        Reflect.getMetadata(PARAM_PIPES_METADATA, target, propertyKey) ?? {};
+      existing[paramIndex] = pipes;
+      Reflect.defineMetadata(PARAM_PIPES_METADATA, existing, target, propertyKey);
+      return;
+    }
+    // Class or method decorator
     const where = key ? target[key] : target;
     Reflect.defineMetadata(PIPES_METADATA, pipes, where);
   };
@@ -30,14 +44,28 @@ export function getPipes(
   return [...globalPipes, ...classPipes, ...methodPipes];
 }
 
+/** Отримує pipe для конкретного параметра методу */
+export function getParamPipes(
+  controller: Function,
+  handler: Function,
+  paramIndex: number,
+): PipesType[] {
+  const prototype = controller.prototype;
+  const methodName = handler.name;
+  const paramPipesMap: Record<number, PipesType[]> | undefined =
+    Reflect.getMetadata(PARAM_PIPES_METADATA, prototype, methodName);
+  return paramPipesMap?.[paramIndex] ?? [];
+}
+
 export async function runPipes(
   controllerCls: Function,
   handler: Function,
   value: unknown,
   meta: ArgumentMetadata,
   globalPipes: PipesType[] = [],
+  paramPipes: PipesType[] = [],
 ) {
-  const pipes = getPipes(handler, controllerCls, globalPipes);
+  const pipes = [...getPipes(handler, controllerCls, globalPipes), ...paramPipes];
 
   let transformed = value;
 

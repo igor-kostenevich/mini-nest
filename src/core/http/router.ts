@@ -2,6 +2,7 @@ import express from 'express';
 import {container} from '../container';
 import {Type} from "../types";
 import {get} from "../utils";
+import { PipesMiddleware } from "./pipes.middleware";
 import {GuardsMiddleware} from "./guards.middleware";
 import {InterceptorsMiddleware} from "./interceptors.middleware";
 import {HandlerMiddleware} from "./handler.middleware";
@@ -42,6 +43,7 @@ export function Factory(modules: any[]) {
 
             (router as any)[r.method](
               path,
+              asyncHandler(PipesMiddleware(Ctl, handler, globalPipes)),
               asyncHandler(GuardsMiddleware(Ctl, handler, globalGuards)),
               asyncHandler(InterceptorsMiddleware(Ctl, handler, globalInterceptors)),
               asyncHandler(HandlerMiddleware(instance, handler, globalPipes)),
