@@ -1,6 +1,6 @@
 import "reflect-metadata"
 import {BooksModule} from "./apps/books/books.module";
-import {Factory} from "./core/http";
+import {NestFactory} from "./core/nest-factory";
 
 //catch uncaughtException
 process.on('uncaughtException', (err) => {
@@ -9,8 +9,10 @@ process.on('uncaughtException', (err) => {
   // process.exit(1); // Uncomment to exit the process
 });
 
-const app = Factory([BooksModule])
+(async () => {
+  const app = await NestFactory.create(BooksModule);
 
-const port = 3005;
+  const port = 3005;
 
-app.listen(port, () => console.log(`Mini-Nest listening on http://localhost:${port}`));
+  app.listen(port, () => console.log(`Mini-Nest listening on http://localhost:${port}`));
+})();

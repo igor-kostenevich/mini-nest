@@ -8,6 +8,10 @@ export class ZodValidationPipe implements PipeTransform<any, any> {
     private readonly schema: ZodSchema
   ) {}
 
+  static create(schema: ZodSchema) {
+    return new ZodValidationPipe(schema);
+  }
+
   transform(value: unknown, meta: ArgumentMetadata) {
     try {
       return this.schema.parse(value);

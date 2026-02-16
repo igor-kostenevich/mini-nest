@@ -5,9 +5,9 @@ import {get} from "../utils";
 import { PipesMiddleware } from "./pipes.middleware";
 import {GuardsMiddleware} from "./guards.middleware";
 import {InterceptorsMiddleware} from "./interceptors.middleware";
-import {HandlerMiddleware} from "./handler.middleware";
 import {FiltersMiddleware} from "./filters.middleware";
 import {asyncHandler} from "./async.handler";
+import {HttpException} from "./http-exception";
 
 export function Factory(modules: any[]) {
   const app = express();
@@ -20,14 +20,39 @@ export function Factory(modules: any[]) {
   const globalFilters: Array<Type>  = [];
   const globalInterceptors: Array<Type> = [];
 
+  const initializedModules = new Set<any>();
+
+  const initializeModule = (mod: any) => {
+    if (initializedModules.has(mod)) {
+      return;
+    }
+
+    const meta = get('mini:module', mod);
+    if (!meta) return;
+
+    initializedModules.add(mod);
+
+    // Рекурсивно ініціалізуємо імпортовані модулі
+    for (const importedMod of meta.imports ?? []) {
+      initializeModule(importedMod);
+    }
+
+    // Реєструємо провайдери поточного модуля
+    for (const Provider of meta.providers ?? []) {
+      if (!container.has(Provider)) {
+        container.register(Provider, Provider);
+      }
+    }
+  };
+
   const listen = (port: number, callback?: () => void) => {
+      for (const mod of modules) {
+        initializeModule(mod);
+      }
+
       for (const mod of modules) {
         const meta = get('mini:module', mod);
         if (!meta) continue;
-
-        for (const Provider of meta.providers ?? []) {
-          container.register(Provider, Provider);
-        }
 
         for (const Ctl of meta.controllers ?? []) {
           container.register(Ctl, Ctl)
@@ -45,9 +70,8 @@ export function Factory(modules: any[]) {
               path,
               asyncHandler(PipesMiddleware(Ctl, handler, globalPipes)),
               asyncHandler(GuardsMiddleware(Ctl, handler, globalGuards)),
-              asyncHandler(InterceptorsMiddleware(Ctl, handler, globalInterceptors)),
-              asyncHandler(HandlerMiddleware(instance, handler, globalPipes)),
-              asyncHandler(FiltersMiddleware(Ctl, handler, globalFilters)),
+              asyncHandler(InterceptorsMiddleware(Ctl, handler, globalInterceptors, instance, handler)),
+              FiltersMiddleware(Ctl, handler, globalFilters),
             );
           });
         }
@@ -57,6 +81,13 @@ export function Factory(modules: any[]) {
   }
 
   app.use(router);
+
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (err instanceof HttpException) {
+      return res.status(err.status).json({ message: err.message });
+    }
+    return res.status(500).json({ message: 'Internal server error' });
+  });
 
   return {
     get: container.resolve,

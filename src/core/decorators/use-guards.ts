@@ -29,12 +29,11 @@ const getGuards = (handler: Function, controllerClass:  Function, globalGuards: 
   const controllerGuards = Reflect.getMetadata(GUARDS_METADATA, controllerClass) ?? [];
   const routeGuards =  Reflect.getMetadata(GUARDS_METADATA, handler) ?? [];
 
-  globalGuards.push(
+  return [
+    ...globalGuards,
     ...controllerGuards,
     ...routeGuards
-  );
-
-  return globalGuards;
+  ];
 }
 
 

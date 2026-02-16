@@ -22,7 +22,7 @@ export class BooksController {
   }
 
   @Post('/')
-  @UsePipes(ZodValidationPipe)
+  @UsePipes(new ZodValidationPipe(booksSchema))
   add(@Body() body: { title: string }) {
     return this.svc.create(body.title);
   }
